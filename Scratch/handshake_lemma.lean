@@ -92,37 +92,33 @@ def orderedPairs : Finset (V × V) :=
 theorem mem_orderedPairs (p : V × V) : p ∈ G.orderedPairs ↔ G.Adj p.1 p.2 := by
   simp [orderedPairs]
 
+open Classical in
+/-- The pairs with source `v` are exactly `{v} × N(v)`, the pairs of `v` with
+one of its neighbours. -/
+theorem orderedPairs_filter_source (v : V) :
+    {p ∈ G.orderedPairs | p.1 = v} = {v} ×ˢ G.neighborFinset v := by
+  ext p
+  simp only [mem_filter, mem_orderedPairs, mem_product, mem_singleton, mem_neighborFinset]
+  constructor
+  · rintro ⟨hadj, rfl⟩
+    exact ⟨rfl, hadj⟩
+  · rintro ⟨rfl, hadj⟩
+    exact ⟨hadj, rfl⟩
+
+open Classical in
+/-- The number of pairs with source `v` is `v`'s degree: `|{v} × N(v)| = |{v}| *
+|N(v)| = |N(v)|`. -/
+theorem card_filter_source_eq_degree (v : V) :
+    #{p ∈ G.orderedPairs | p.1 = v} = G.degree v := by
+  rw [degree, orderedPairs_filter_source, Finset.card_product, Finset.card_singleton, one_mul]
+
 /-- **First count.** Grouping the ordered pairs by their source vertex gives the
 sum of the degrees: the pairs with source `v` correspond bijectively to the
 neighbours of `v`, via `(v, w) ↦ w`. -/
 theorem card_orderedPairs_eq_sum_degrees : #G.orderedPairs = ∑ v, G.degree v := by
   classical
-  -- Every ordered pair has *some* source vertex, so we may split them into
-  -- fibres indexed by all of `V`.
-  have hsource : ∀ p ∈ G.orderedPairs, p.1 ∈ (univ : Finset V) := by
-    intro p _
-    exact mem_univ p.1
-  rw [Finset.card_eq_sum_card_fiberwise (f := Prod.fst) (t := univ) hsource]
-  -- It remains to check, for each vertex `v`, that the fibre over `v` has
-  -- exactly `degree v` elements.
-  refine Finset.sum_congr rfl fun v _ => ?_
-  rw [degree]
-  -- The bijection {pairs with source v} → {neighbours of v} sends `(v, w) ↦ w`.
-  refine Finset.card_bij (fun p _ => p.2) ?_ ?_ ?_
-  · -- Well defined: if `(v, w)` is a pair with source `v`, then `w` neighbours `v`.
-    intro p hp
-    simp only [mem_filter, mem_orderedPairs] at hp
-    simpa [hp.2, mem_neighborFinset] using hp.1
-  · -- Injective: two pairs in the same fibre agree on their source, so if they
-    -- also agree on their target they are equal.
-    intro p hp q hq h
-    simp only [mem_filter, mem_orderedPairs] at hp hq
-    exact Prod.ext (hp.2.trans hq.2.symm) h
-  · -- Surjective: every neighbour `w` of `v` arises from the pair `(v, w)`.
-    intro w hw
-    refine ⟨(v, w), ?_, rfl⟩
-    simp only [mem_filter, mem_orderedPairs]
-    simpa [mem_neighborFinset] using hw
+  rw [Finset.card_eq_sum_card_fiberwise (f := Prod.fst) (t := univ) fun p _ => mem_univ p.1]
+  exact Finset.sum_congr rfl fun v _ => G.card_filter_source_eq_degree v
 
 /-! ### Edges -/
 

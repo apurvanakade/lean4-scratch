@@ -68,40 +68,32 @@ def edgeFinset : Finset (V × V) :=
 theorem mem_edgeFinset (p : V × V) : p ∈ G.edgeFinset ↔ G.Adj p.1 p.2 := by
   simp [edgeFinset]
 
+open Classical in
+/-- The edges with source `v` are exactly `{v} × N(v)`, the pairs of `v` with
+one of its out-neighbours. -/
+theorem edgeFinset_filter_source (v : V) :
+    {p ∈ G.edgeFinset | p.1 = v} = {v} ×ˢ G.outNeighborFinset v := by
+  ext p
+  simp only [mem_filter, mem_edgeFinset, mem_product, mem_singleton, mem_outNeighborFinset]
+  constructor
+  · rintro ⟨hadj, rfl⟩
+    exact ⟨rfl, hadj⟩
+  · rintro ⟨rfl, hadj⟩
+    exact ⟨hadj, rfl⟩
+
+open Classical in
+/-- The number of edges with source `v` is `v`'s out-degree: `|{v} × N(v)| =
+|{v}| * |N(v)| = |N(v)|`. -/
+theorem card_filter_source_eq_outDegree (v : V) :
+    #{p ∈ G.edgeFinset | p.1 = v} = G.outDegree v := by
+  rw [outDegree, edgeFinset_filter_source, Finset.card_product, Finset.card_singleton, one_mul]
+
 /-- **Directed handshake lemma.** The out-degrees of a finite directed graph sum
 to its number of edges: grouping the edges by their source vertex `v` recovers
 exactly the out-degree of `v`. -/
 theorem sum_outDegree_eq_card_edges : ∑ v, G.outDegree v = #G.edgeFinset := by
   classical
-  -- Every edge has *some* source vertex, so we may split the edges into fibres
-  -- indexed by all of `V`.
-  have hsource : ∀ p ∈ G.edgeFinset, p.1 ∈ (univ : Finset V) := by
-    intro p _
-    exact mem_univ p.1
-  rw [Finset.card_eq_sum_card_fiberwise (f := Prod.fst) (t := univ) hsource]
-  -- It remains to check, for each vertex `v`, that the fibre over `v` has
-  -- exactly `outDegree v` elements.
-  refine Finset.sum_congr rfl fun v _ => ?_
-  rw [outDegree]
-  -- The bijection {out-neighbours of v} → {edges with source v} sends `w ↦ (v, w)`.
-  refine Finset.card_bij (fun w _ => (v, w)) ?_ ?_ ?_
-  · -- Well defined: if `w` is an out-neighbour of `v`, then `(v, w)` is an edge
-    -- and its source is `v`.
-    intro w hw
-    simp only [mem_outNeighborFinset] at hw
-    simp only [mem_filter, mem_edgeFinset]
-    exact ⟨hw, trivial⟩
-  · -- Injective: `(v, w) = (v, w')` forces `w = w'`.
-    intro w _ w' _ h
-    exact congrArg Prod.snd h
-  · -- Surjective: an edge `p` with source `v` is `(v, p.2)`, coming from the
-    -- out-neighbour `p.2`.
-    intro p hp
-    simp only [mem_filter, mem_edgeFinset] at hp
-    obtain ⟨hadj, hsrc⟩ := hp
-    refine ⟨p.2, ?_, ?_⟩
-    · simp only [mem_outNeighborFinset]
-      rwa [hsrc] at hadj
-    · exact Prod.ext hsrc.symm rfl
+  rw [Finset.card_eq_sum_card_fiberwise (f := Prod.fst) (t := univ) fun p _ => mem_univ p.1]
+  exact Finset.sum_congr rfl fun v _ => (G.card_filter_source_eq_outDegree v).symm
 
 end Digraph
